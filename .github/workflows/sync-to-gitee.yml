@@ -1,0 +1,38 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync to Gitee
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_IPADLINKMAC_TOKEN }}
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 添加或更新 gitee 远程
+          if git remote get-url gitee &>/dev/null; then
+            git remote set-url gitee "https://kuck007:${GITEE_TOKEN}@gitee.com/kuck007/ipad-autolink-mac.git"
+          else
+            git remote add gitee "https://kuck007:${GITEE_TOKEN}@gitee.com/kuck007/ipad-autolink-mac.git"
+          fi
+
+          echo "Pushing branches to Gitee..."
+          git push gitee --all --force
+
+          echo "Pushing tags to Gitee..."
+          git push gitee --tags --force
+
+          echo "Sync completed successfully"

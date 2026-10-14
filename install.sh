@@ -40,14 +40,14 @@ fi
 # 检查是否有 iPad（仅提示，不强制）
 if ioreg -l 2>/dev/null | grep -q 'iPad@'; then
   ok "检测到 iPad 已连接"
-  # 提示 iPad 名字（脚本按名字"iPad"匹配，名字不对会找不到）
+  # 脚本与设备名解耦，任意名字都能识别
   IPAD_NAME_RAW=$(ioreg -l 2>/dev/null | grep -o 'iPad@[^<]*' | head -1)
   if [ -n "$IPAD_NAME_RAW" ]; then
-    info "检测到设备名: $IPAD_NAME_RAW"
+    info "检测到设备: $IPAD_NAME_RAW"
   fi
-  info "提醒：脚本按设备名『iPad』匹配，若你改过 iPad 名字，请改成『iPad』（iPad上: 设置→通用→关于本机→名称）"
+  info "设备名无所谓，任意名字都能自动连；请确保 iPad 与 Mac 登录同一 Apple ID"
 else
-  info "未检测到 iPad（安装时可以不插，插上即自动生效；请确保 iPad 名字叫『iPad』）"
+  info "未检测到 iPad（安装时可以不插，插上即自动生效；设备名任意，需同一 Apple ID）"
 fi
 
 # ---------- 2. 创建目标目录 ----------
@@ -120,9 +120,14 @@ else
   ok "辅助功能已授权"
 fi
 
-# ---------- 8. 启动菜单栏 App ----------
-open -a "$APP_DEST" 2>/dev/null || true
-sleep 1
+# ---------- 8. 启动菜单栏 App（仅当未运行，避免与 plist 自启产生重复实例）----------
+if pgrep -f "随航开关.app/Contents/MacOS" >/dev/null 2>&1; then
+  ok "菜单栏 App 已在运行（登录自启已拉起），不再重复打开"
+else
+  open -a "$APP_DEST" 2>/dev/null || true
+  sleep 1
+  ok "菜单栏 App 已启动"
+fi
 
 echo ""
 echo "=============================================="

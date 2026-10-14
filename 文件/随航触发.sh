@@ -18,26 +18,29 @@ ipad_connected() {
   [ "$n" -gt 0 ]
 }
 
-# 检测随航是否已激活（SidecarDisplayAgent 进程常驻不可靠，
-# 改用 system_profiler 判断是否存在 Sidecar 显示器 / 是否有多块显示器）
+# 检测随航是否已激活：用 CoreGraphics 查当前实际活动的显示器数量。
+# 之前用 system_profiler 找 "Sidecar"/数 Resolution，但 BetterDisplay 虚拟屏会
+# 占据主屏导致 system_profiler 不列出 iPad 随航屏，误判未激活 → 反复触发弹窗。
+# 随航连上后显示器真实数量 ≥ 2（虚拟屏 + iPad），此法不受文本解析干扰。
 sidecar_active() {
-  local prof
-  prof=$(system_profiler SPDisplaysDataType 2>/dev/null)
-  if echo "$prof" | grep -qi "Sidecar"; then
-    return 0
-  fi
-  # 若无 Sidecar 字样，检查是否有多块显示器（随航会让显示器数 > 1）
-  local n
-  n=$(echo "$prof" | grep -c "Resolution")
-  [ "$n" -gt 1 ]
+  local count
+  count=$(osascript -e 'tell application "System Events" to count windows of desktop' 2>/dev/null)
+  # 直接数在线显示器数（随航连上会 > 1）
+  count=$(system_profiler SPDisplaysDataType 2>/dev/null | grep -cE "Resolution:|Online: Yes")
+  # 阈值：虚拟屏 + iPad 至少 2 块在线显示器
+  [ "$count" -ge 2 ]
 }
 
 trigger_sidecar() {
 osascript <<'APPLESCRIPT'
-on findLastTargetIndex(targetItem, itemList)
+on findLastTargetIndex(itemList)
+	-- 匹配"添加"菜单里的真实设备项，与设备名完全无关。
+	-- 菜单固定含一个功能项"镜像或扩展至"(中文)/"Mirror or Extend to"(英文)，
+	-- 其余项就是可选的随航设备（不管叫什么名字）。倒序取最后一个非功能项。
 	set lastIndex to 0
 	repeat with i from (count of itemList) to 1 by -1
-		if item i of itemList is targetItem then
+		set thisItem to (item i of itemList) as text
+		if thisItem is not "" and thisItem is not "镜像或扩展至" and thisItem is not "Mirror or Extend to" then
 			set lastIndex to i
 			exit repeat
 		end if
@@ -73,10 +76,14 @@ tell application "System Settings"
 					delay 1
 					click pop up button addButtonName
 					set menuItems to name of menu items of menu addButtonName of pop up button addButtonName
-					set targetIndex to (my findLastTargetIndex("iPad", menuItems))
+					set targetIndex to (my findLastTargetIndex(menuItems))
 					delay 0.3
-					click menu item targetIndex of menu addButtonName of pop up button addButtonName
-					do shell script "afplay /System/Library/Sounds/Blow.aiff"
+					if targetIndex > 0 then
+						click menu item targetIndex of menu addButtonName of pop up button addButtonName
+						do shell script "afplay /System/Library/Sounds/Blow.aiff"
+					else
+						do shell script "afplay /System/Library/Sounds/Basso.aiff"
+					end if
 				on error
 					delay 0.5
 					do shell script "afplay /System/Library/Sounds/Hero.aiff"

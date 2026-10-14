@@ -20,8 +20,12 @@
 
 ### 安装（3 步）
 
+**下载 Release zip（推荐普通用户）**：到 [Releases](https://github.com/Kuck007/ipad-autolink-mac/releases) 下载 `ipad-autolink-mac-v1.0.1.zip`，解压，进入「随航一键安装」文件夹，**右键 `install.sh` → 打开**。
+
+**或用命令行（clone / 拷贝项目后）**：
+
 ```bash
-# 1. 下载或拷贝本项目到目标 Mac
+# 1. 进入本项目目录
 # 2. 运行安装脚本
 bash install.sh
 

@@ -18,17 +18,12 @@ ipad_connected() {
   [ "$n" -gt 0 ]
 }
 
-# 检测随航是否已激活：用 CoreGraphics 查当前实际活动的显示器数量。
-# 之前用 system_profiler 找 "Sidecar"/数 Resolution，但 BetterDisplay 虚拟屏会
-# 占据主屏导致 system_profiler 不列出 iPad 随航屏，误判未激活 → 反复触发弹窗。
-# 随航连上后显示器真实数量 ≥ 2（虚拟屏 + iPad），此法不受文本解析干扰。
+# 检测随航是否已激活：直接检测 system_profiler 中是否出现 "Sidecar" 显示器。
+# 随航激活时会明确列出 "Sidecar Display"（实测 Main Display: Yes）。
+# 不能用数 Resolution/Online 行数的方式：BetterDisplay 单块虚拟屏自己就有
+# Resolution + Online 两行 = 2，会在随航没连上时误判为已激活。
 sidecar_active() {
-  local count
-  count=$(osascript -e 'tell application "System Events" to count windows of desktop' 2>/dev/null)
-  # 直接数在线显示器数（随航连上会 > 1）
-  count=$(system_profiler SPDisplaysDataType 2>/dev/null | grep -cE "Resolution:|Online: Yes")
-  # 阈值：虚拟屏 + iPad 至少 2 块在线显示器
-  [ "$count" -ge 2 ]
+  system_profiler SPDisplaysDataType 2>/dev/null | grep -qi "Sidecar"
 }
 
 trigger_sidecar() {
@@ -40,7 +35,7 @@ on findLastTargetIndex(itemList)
 	set lastIndex to 0
 	repeat with i from (count of itemList) to 1 by -1
 		set thisItem to (item i of itemList) as text
-		if thisItem is not "" and thisItem is not "镜像或扩展至" and thisItem is not "Mirror or Extend to" then
+		if thisItem is not "" and thisItem is not "missing value" and thisItem is not "镜像或扩展至" and thisItem is not "Mirror or Extend to" then
 			set lastIndex to i
 			exit repeat
 		end if
@@ -70,24 +65,21 @@ tell application "System Settings"
 			click menu item menuItemName of menu menuBarItemName of menu bar item menuBarItemName of menu bar 1
 			delay 0.5
 
-			-- 点右边的"添加"按钮，选 iPad
+			-- 点右边的"添加"按钮，选设备
 			tell group 1 of group 2 of splitter group 1 of group 1 of window menuItemName
-				try
-					delay 1
-					click pop up button addButtonName
-					set menuItems to name of menu items of menu addButtonName of pop up button addButtonName
-					set targetIndex to (my findLastTargetIndex(menuItems))
-					delay 0.3
-					if targetIndex > 0 then
-						click menu item targetIndex of menu addButtonName of pop up button addButtonName
-						do shell script "afplay /System/Library/Sounds/Blow.aiff"
-					else
-						do shell script "afplay /System/Library/Sounds/Basso.aiff"
-					end if
-				on error
-					delay 0.5
-					do shell script "afplay /System/Library/Sounds/Hero.aiff"
-				end try
+				delay 1
+				click pop up button addButtonName
+				delay 0.8
+				-- 用 menu 1（按索引）引用弹出菜单，不依赖菜单名"添加"，更可靠
+				set menuItems to name of menu items of menu 1 of pop up button addButtonName
+				set targetIndex to (my findLastTargetIndex(menuItems))
+				delay 0.3
+				if targetIndex > 0 then
+					click menu item targetIndex of menu 1 of pop up button addButtonName
+					do shell script "afplay /System/Library/Sounds/Blow.aiff"
+				else
+					do shell script "afplay /System/Library/Sounds/Basso.aiff"
+				end if
 			end tell
 		end tell
 	end tell
@@ -109,10 +101,19 @@ if sidecar_active; then
 fi
 
 log "检测到 iPad 插入，触发随航..."
-if trigger_sidecar; then
-  log "随航触发成功"
-  exit 0
-else
-  log "随航触发失败（可能缺少辅助功能授权）"
-  exit 1
-fi
+trigger_sidecar
+
+# 不盲信 osascript 退出码：等待后在 shell 层真实验证 Sidecar 是否真的出现。
+# 触发动作可能点中后需要几秒建立连接，最多等待约 12 秒。
+i=0
+while [ $i -lt 6 ]; do
+  if sidecar_active; then
+    log "随航触发成功（已验证 Sidecar 显示器在线）"
+    exit 0
+  fi
+  sleep 2
+  i=$((i+1))
+done
+
+log "随航触发失败：触发后未检测到 Sidecar 显示器（可能缺少辅助功能授权或菜单未点中）"
+exit 1

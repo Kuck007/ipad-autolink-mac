@@ -44,7 +44,7 @@ bash uninstall.sh
 | 前提 | 说明 |
 |------|------|
 | **iPad 支持随航** | iPad Pro / iPad 6 代+ / iPad Air 3 代+ / iPad mini 5 代+ |
-| **iPad 名字叫 `iPad`** | 脚本按设备名匹配：设置 → 通用 → 关于本机 → 名称 |
+| **同一 Apple ID** | iPad 和 Mac 必须登录同一 Apple ID；**设备名无所谓**，任意名字都能识别 |
 | **Mac 至少有一个屏幕** | 无屏 Mac（如 Mac mini）需用 BetterDisplay 挂虚拟屏，随航后设 iPad 为主屏、虚拟屏镜像 iPad |
 
 ---

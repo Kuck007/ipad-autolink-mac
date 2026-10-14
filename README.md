@@ -2,7 +2,7 @@
 
 让 **任何 Mac** 插上 iPad 就自动连上随航（Sidecar），把 iPad 当作显示器使用。换机、重置、给别人用，一条命令装好，永久复用。
 
-![macOS](https://img.shields.io/badge/macOS-14%2B-black) ![License](https://img.shields.io/badge/license-MIT-blue)
+![macOS](https://img.shields.io/badge/macOS-14%2B-black) ![License](https://img.shields.io/badge/license-GPL--3.0-orange)
 
 ---
 
